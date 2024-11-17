@@ -23,8 +23,7 @@
         </div>
 
         <div class="courses-grid" v-if="activeTab === 'created'">
-            <CourseCard v-for="course in createdCourses" :key="course.id" :course="course" />
-            <h2 class="text-center">Unavailable to create right now</h2>
+            <CourseCreation v-if="activeTab === 'created'" />
         </div>
     </div>
 </template>
@@ -32,11 +31,12 @@
 <script>
 import { authState } from '@/auth';
 import CourseCard from './layout/CourseCard.vue';
+import CourseCreation from './CourseCreatePage.vue';
 import { availableCourses, completedCourses, createdCourses } from '@/config/course-config.js';
 
 export default {
     name: 'CoursesPage',
-    components: { CourseCard },
+    components: { CourseCard, CourseCreation },
     data() {
         return {
             activeTab: 'available', // Default tab
@@ -51,13 +51,13 @@ export default {
                 alert('You must be logged in to access this page.');
                 this.$router.push({ name: 'SignUp' });
                 return;
+            }else if(authState.currentUser.role === 'admin') {
+                console.log('Admin access granted.');
             }
-            else if (authState.currentUser.role === 'admin') {
-                console.log('User is an admin.');
-            }  else {
+            else {
                 alert('You must contact the admin to access this page.');
-                this.activeTab = 'available'; 
-                this.$router.push({ name: 'CoursesPage' }); 
+                this.activeTab = 'available';
+                this.$router.push({ name: 'CoursesPage' });
             }
         },
     },
@@ -68,7 +68,7 @@ export default {
             }
         },
     },
-    
+
 };
 </script>
 
@@ -77,9 +77,8 @@ export default {
 
 <style scoped>
 .courses-container {
-    margin: 0 auto;
+    margin: 0px auto;
     padding: 20px;
-    height: 100vh;
 }
 
 .courses-header {
@@ -87,7 +86,7 @@ export default {
 }
 
 .navigation-tabs {
-    width: 100vh;
+    width: 1200px;
     display: flex;
     gap: 20px;
     border-bottom: 2px solid #eee;

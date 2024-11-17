@@ -5,22 +5,33 @@ import BookingPage from '@/components/BookingPage.vue';
 import CoursesPage from '@/components/CoursesPage.vue';
 import CourseDetailPage from '@/components/CourseDetailPage.vue';
 import AuthenticationPage from '@/components/AuthenticationPage.vue';
+import CourseEditForm from '@/components/CourseEditPage.vue';
 import { authState } from '@/auth'; // Import the global auth state
 
 const routes = [
     { path: '/', redirect: { name: 'HomePage' } },
-    { path: '/Home', name: 'HomePage', component: HomePage, meta: { title: 'Home' } },
-    { path: '/Promotion', name: 'PromotionPage', component: PromotionPage, meta: { title: 'Promotion' } },
-    { path: '/Booking', name: 'BookingPage', component: BookingPage, meta: { title: 'Booking', requiresAuth: true } },
-    { path: '/Courses', name: 'CoursesPage', component: CoursesPage, meta: { title: 'Courses' } },
+    { path: '/home', name: 'HomePage', component: HomePage, meta: { title: 'Home' } },
+    { path: '/promotion', name: 'PromotionPage', component: PromotionPage, meta: { title: 'Promotion' } },
+    { path: '/booking', name: 'BookingPage', component: BookingPage, meta: { title: 'Booking', requiresAuth: true } },
+    { path: '/courses', name: 'CoursesPage', component: CoursesPage, meta: { title: 'Courses' } },
     {
-        path: '/Courses/:id',
+        path: '/courses/:id',
         name: 'CourseDetailPage',
         component: CourseDetailPage,
         props: true,
+        meta: { title: 'Course Detail' }
+    }, {
+        path: '/courses/:id/edit',
+        name: 'CourseEdit',
+        props: true,
+        requiresAdmin: true,
+        component: CourseEditForm,
+        meta: {
+            title: 'Edit Course'
+        }
     },
     {
-        path: '/Signup',
+        path: '/signup',
         name: 'SignUp',
         component: AuthenticationPage,
         meta: { title: 'Sign Up' },
@@ -45,7 +56,10 @@ router.beforeEach((to, from, next) => {
         alert('Contact the admin for access.');
         return next({ name: 'HomePage' });
     }
-
+    if (to.name === 'CourseEdit' && (!authState.currentUser || authState.currentUser.role !== 'admin')) {
+        alert('Only administrators can edit courses.');
+        return next({ name: 'HomePage' });
+    }
     next();
 });
 

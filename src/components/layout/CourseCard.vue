@@ -13,10 +13,11 @@
                     </span>
                     <div class="course-details">
                         <span class="detail">
-                            <i class="fas fa-clock"></i> {{ course.duration }}
+                            <i class="fas fa-calendar-alt"></i> {{ course.start_date }} {{ course.start_time }}
                         </span>
                         <span class="detail">
-                            <i class="fas fa-users"></i> {{ course.capacity }} spots
+                            <i class="fas fa-clock " ></i> {{ course.duration }}
+                            <i class="fas fa-users mgl-1"></i> {{ course.capacity }} spots
                         </span>
                     </div>
                     <div class="tags">
@@ -104,6 +105,7 @@ export default {
 
 .course-details {
     display: flex;
+    flex-direction: column;
     gap: 15px;
 }
 

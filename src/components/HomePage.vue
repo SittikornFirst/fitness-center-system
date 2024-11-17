@@ -4,12 +4,19 @@
             <h1>FITNESS <br>CENTER SYSTEM</h1>
             <a href="#" class="cta">WWW.FITNESSCENTERSYSTEM.COM</a>
         </section>
+        <ReviewSlider />
     </div>
+    
 </template>
 
 <script>
+import ReviewSlider from '@/components/layout/ReviewSlider.vue';
+
 export default {
     name: 'HomePage',
+    components: {
+        ReviewSlider
+    }
 };
 </script>
 

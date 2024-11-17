@@ -166,13 +166,19 @@
                         <div v-if="activeTab === 'court'" class="mb-3">
                             <label class="form-label h5">Select Court</label>
                             <div class="row g-3">
-                                <div class="col-md-6" v-for="court in courts" :key="court.id">
+                                <div class="col-md-6" v-for="court in hasAvailabilityCourtToday(courts)"
+                                    :key="court.id">
                                     <button @click="selectedCourt = court.id"
                                         :class="['btn w-100 p-3', selectedCourt === court.id ? 'btn-primary' : 'btn-outline-secondary']">
                                         <i class="fas fa-map-marker-alt me-2"></i>
                                         {{ court.courtName }}
+                                        <small v-if="court.type" class="d-block text-muted">{{ court.type }}</small>
                                     </button>
                                 </div>
+                            </div>
+                            <div v-if="hasAvailabilityCourtToday(courts).length === 0" class="alert alert-warning mt-3">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                No courts available today
                             </div>
                         </div>
                         <button @click="confirmBooking()"
@@ -205,7 +211,8 @@
                             </div>
                         </div>
                     </div>
-                    <div v-if="bookingStatus === 'pending'" class="alert alert-warning text-center p-4 d-flex flex-column align-items-center justify-content-center">
+                    <div v-if="bookingStatus === 'pending'"
+                        class="alert alert-warning text-center p-4 d-flex flex-column align-items-center justify-content-center">
                         <i class="fas fa-clock fa-3x mb-3"></i>
                         <h5>Awaiting Approval</h5>
                         <p class="mb-0">Your booking is pending admin approval.</p>
@@ -277,13 +284,13 @@ export default {
     methods: {
         async confirmBooking() {
             if (!this.currentUser?.email) {
-                console.error('User not authenticated');
+                alert('User not authenticated');
                 return;
             }
 
             const userInfo = userConfig.users.find(u => u.email === this.currentUser.email);
             if (!userInfo) {
-                console.error('User information not found');
+                alert('User information not found');
                 return;
             }
 
@@ -292,7 +299,7 @@ export default {
 
             const newBooking = {
                 id: this.bookings.length + 1,
-                userId: userInfo.id, // Use the correct user ID from userConfig
+                userId: userInfo.id, 
                 trainerId: this.selectedTrainer,
                 date: new Date().toISOString().split('T')[0],
                 time: this.selectedTime,
@@ -325,6 +332,14 @@ export default {
             const today = this.getCurrentDay();
             const todaySchedule = trainer.availability.find(a => a.day === today);
             return todaySchedule && todaySchedule.times.length > 0;
+        },
+
+        hasAvailabilityCourtToday(courts) {
+            const today = this.getCurrentDay();
+            return courts.filter(court => {
+                const todaySchedule = court.availability.find(a => a.day === today);
+                return todaySchedule && todaySchedule.times.length > 0;
+            });
         },
 
         getTrainerTodayAvailability(trainer) {
@@ -374,7 +389,7 @@ export default {
             immediate: true,
             handler(isLoggedIn) {
                 if (!isLoggedIn) {
-                    this.$router.push('/home'); // Redirect to home if not logged in
+                    this.$router.push('/home'); 
                 }
             }
         },
@@ -382,10 +397,11 @@ export default {
             immediate: true,
             handler(isAdmin) {
                 if (!isAdmin && this.$route.name === 'AdminBookingPage') {
-                    this.$router.push('/home'); // Redirect to home if not admin
+                    this.$router.push('/home'); 
                 }
             }
-        }
+        },
+
     }
 };
 </script>

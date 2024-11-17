@@ -22,7 +22,7 @@
                         <td>{{ formatDate(booking.date) }}</td>
                         <td>{{ booking.time }}</td>
                         <td>{{ getCourtName(booking.courtId) }}</td>
-                        <td>
+                        <td >
                             <span :class="[
                                 'badge',
                                 {
@@ -34,7 +34,7 @@
                                 {{ booking.bookingStatus }}
                             </span>
                         </td>
-                        <td>
+                        <td class="action-td">
                             <div v-if="booking.bookingStatus === 'pending'" class="btn-group">
                                 <button @click="approveBooking(booking.id)"
                                     class="btn btn-sm btn-success action-button">
@@ -52,8 +52,9 @@
         </div>
     </div>
 </template>
+
 <script>
-import { computed } from 'vue';
+import { ref } from 'vue';
 import { trainers } from '@/config/trainer-config.js';
 import { courts } from '@/config/court-config.js';
 import { bookingConfig } from '@/config/booking-config.js';
@@ -64,77 +65,71 @@ export default {
     emits: ['booking-updated'],
 
     setup() {
-        const bookings = computed(() => bookingConfig.bookings);
+        const bookings = ref([...bookingConfig.bookings]);
 
-        return {
-            bookings,
-            trainers,
-            courts
-        };
-    },
-
-    methods: {
-        formatDate(dateString) {
-            return new Date(dateString).toLocaleDateString('en-US', {
+        const formatDate = (dateString) =>
+            new Date(dateString).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric'
             });
-        },
-        getUserName(userId) {
-            const user = userConfig.users.find(u => u.id === userId);
+
+        const getUserName = (userId) => {
+            const user = userConfig.users.find((u) => u.id === userId);
             return user ? user.username : 'Unknown';
-        },
-        getTrainerName(trainerId) {
-            const trainer = this.trainers.find(t => t.id === trainerId);
+        };
+
+        const getTrainerName = (trainerId) => {
+            const trainer = trainers.find((t) => t.id === trainerId);
             return trainer ? trainer.name : 'Unknown';
-        },
+        };
 
-        getCourtName(courtId) {
-            const court = this.courts.find(c => c.id === courtId);
+        const getCourtName = (courtId) => {
+            const court = courts.find((c) => c.id === courtId);
             return court ? court.courtName : 'Unknown';
-        },
+        };
 
-        async approveBooking(bookingId) {
-            try {
-                await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
+        const updateConfigBookings = () => {
+            bookingConfig.bookings = [...bookings.value];
+        };
 
-                const bookingIndex = bookingConfig.bookings.findIndex(b => b.id === bookingId);
-                if (bookingIndex !== -1) {
-                    const updatedBookings = [...bookingConfig.bookings];
-                    updatedBookings[bookingIndex] = {
-                        ...updatedBookings[bookingIndex],
-                        bookingStatus: 'approved'
-                    };
-                    bookingConfig.bookings = updatedBookings;
-                    this.$emit('booking-updated');
-                }
-            } catch (error) {
-                console.error('Error approving booking:', error);
+        const approveBooking = async (bookingId) => {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            const bookingIndex = bookings.value.findIndex((b) => b.id === bookingId);
+            if (bookingIndex !== -1) {
+                bookings.value[bookingIndex] = {
+                    ...bookings.value[bookingIndex],
+                    bookingStatus: 'approved'
+                };
+                updateConfigBookings();
             }
-        },
+        };
 
-        async rejectBooking(bookingId) {
-            try {
-                await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
-
-                const bookingIndex = bookingConfig.bookings.findIndex(b => b.id === bookingId);
-                if (bookingIndex !== -1) {
-                    const updatedBookings = [...bookingConfig.bookings];
-                    updatedBookings[bookingIndex] = {
-                        ...updatedBookings[bookingIndex],
-                        bookingStatus: 'rejected'
-                    };
-                    bookingConfig.bookings = updatedBookings;
-                    this.$emit('booking-updated');
-                }
-            } catch (error) {
-                console.error('Error rejecting booking:', error);
+        const rejectBooking = async (bookingId) => {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            const bookingIndex = bookings.value.findIndex((b) => b.id === bookingId);
+            if (bookingIndex !== -1) {
+                bookings.value[bookingIndex] = {
+                    ...bookings.value[bookingIndex],
+                    bookingStatus: 'rejected'
+                };
+                updateConfigBookings();
             }
-        }
-    },
+        };
+
+        return {
+            bookings,
+            formatDate,
+            getUserName,
+            getTrainerName,
+            getCourtName,
+            approveBooking,
+            rejectBooking
+        };
+    }
 };
 </script>
+
 <style scoped>
 .status,
 .action-button {
@@ -142,6 +137,9 @@ export default {
     align-items: center;
     width: 80px;
     height: 30px;
+}
+.action-td{
+    width: 200px;
 }
 
 .btn {
