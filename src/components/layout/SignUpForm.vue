@@ -1,9 +1,14 @@
 <template>
     <form class="signup-form" @submit.prevent="handleSignUp">
         <div class="form-group">
+            <label>Username</label>
+            <input type="text" v-model="username" required placeholder="Enter your username" />
+        </div>
+        <div class="form-group">
             <label>Email</label>
             <input type="email" v-model="email" required placeholder="Enter your email" />
             <span v-if="!isEmailValid" class="error-message">Please enter a valid email address.</span>
+            <span v-if="isEmailTaken" class="error-message">This email is already registered.</span>
         </div>
         <div class="form-group">
             <label>Password</label>
@@ -14,18 +19,22 @@
             <input type="password" v-model="confirmPassword" required placeholder="Confirm your password" />
             <span v-if="!passwordsMatch" class="error-message">Passwords do not match.</span>
         </div>
-        <button type="submit" class="button" :disabled="!passwordsMatch || !isEmailValid">Sign Up</button>
+        <button type="submit" class="button" :disabled="!isFormValid">Sign Up</button>
     </form>
 </template>
 
 <script>
+import { userConfig } from '@/config/user-config.js';
+
 export default {
     name: 'SignUpForm',
     data() {
         return {
+            username: '',
             email: '',
             password: '',
             confirmPassword: '',
+            isEmailTaken: false
         };
     },
     computed: {
@@ -36,28 +45,68 @@ export default {
             const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
             return emailRegex.test(this.email);
         },
+        isFormValid() {
+            return this.passwordsMatch &&
+                this.isEmailValid &&
+                !this.isEmailTaken &&
+                this.username.length > 0 &&
+                this.password.length > 0;
+        }
+    },
+    watch: {
+        email() {
+            this.checkEmailAvailability();
+        }
     },
     methods: {
+        checkEmailAvailability() {
+            this.isEmailTaken = userConfig.users.some(user => user.email === this.email);
+        },
         async handleSignUp() {
-            if (!this.isEmailValid) {
-                this.$emit('show-message', { text: 'Invalid email address.', type: 'error' });
+            if (!this.isFormValid) {
+                this.$emit('show-message', {
+                    text: 'Please check all fields are valid.',
+                    type: 'error'
+                });
                 return;
             }
-            try {
-                this.$emit('show-message', { text: 'Sign up successful!', type: 'success' });
-                localStorage.setItem('isLoggedIn', true);
-                localStorage.setItem('userRole', 'user');
 
+            try {
+                // Create new user object
+                const newUser = {
+                    id: userConfig.users.length + 1,
+                    username: this.username,
+                    email: this.email,
+                    password: this.password,
+                    role: 'user'
+                };
+
+                // Add to users array
+                userConfig.users.push(newUser);
+
+                // Store user session
+                localStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('userRole', 'user');
+                localStorage.setItem('userName', newUser.username);
+
+                this.$emit('show-message', {
+                    text: 'Sign up successful!',
+                    type: 'success'
+                });
+
+                // Redirect to home page
                 this.$router.push({ name: 'HomePage' });
             } catch (error) {
                 console.error('Sign up error:', error);
-                this.$emit('show-message', { text: 'Sign up failed. Please try again.', type: 'error' });
+                this.$emit('show-message', {
+                    text: 'Sign up failed. Please try again.',
+                    type: 'error'
+                });
             }
         },
     },
 };
 </script>
-
 
 <style scoped>
 .container {

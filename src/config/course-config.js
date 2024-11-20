@@ -67,7 +67,7 @@ export const availableCourses = [
 
 export const completedCourses = [
     {
-        id: 4,
+        id: 5,
         title: 'Strength Training 101',
         short_description: 'Learn proper form and technique for major exercises.',
         long_description: 'This Strength Training 101 course is designed to teach you the fundamentals of muscle-building exercises. You’ll learn proper form and technique for squats, deadlifts, bench press, and other key movements, making it ideal for building strength and avoiding injuries.',

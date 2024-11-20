@@ -1,24 +1,32 @@
-// promotion-config.js
 export const promotions = [
     {
-        id: 1,
-        title: "Loy Krathong Celebration",
-        description: "Celebrate Loy Krathong with 20% off on all yoga and meditation classes!",
+        id: '1',
+        title: 'Early Bird Special',
+        description: 'Get 20% off on all morning classes before 10 AM',
         discount: 20,
-        endDate: "18-11-2024",
+        startDate: '2024-01-01',
+        endDate: '2024-12-31',
+        code: 'EARLY20',
+        image: null
     },
     {
-        id: 2,
-        title: "New Year Fitness Boost",
-        description: "Kick off the new year with 15% off all memberships!",
+        id: '2',
+        title: 'Student Discount',
+        description: 'Students get 15% off on all memberships with valid ID',
         discount: 15,
-        endDate: "31-01-2025",
+        startDate: '2024-01-01',
+        endDate: '2024-12-31',
+        code: 'STUDENT15',
+        image: null
     },
     {
-        id: 3,
-        title: "Summer Strength Challenge",
-        description: "Get 10% off personal training sessions all summer!",
-        discount: 10,
-        endDate: "30-06-2025",
-    },
+        id: '3',
+        title: 'Summer Special',
+        description: 'Join now and get 3 months free personal training sessions',
+        discount: 30,
+        startDate: '2024-06-01',
+        endDate: '2024-08-31',
+        code: 'SUMMER30',
+        image: null
+    }
 ];

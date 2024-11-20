@@ -37,7 +37,8 @@
         <div class="booking-section">
             <div v-if="!isAuthenticated" class="auth-message alert alert-warning">
                 <i class="fas fa-lock me-2"></i>
-                Please <router-link to="/login" class="alert-link">login</router-link> to book this course
+                Please <router-link to="/signup" class="alert-link">login</router-link> or
+                <router-link to="/signup" class="alert-link">signup</router-link> to book this course
             </div>
 
             <div v-else-if="hasUserBooked" class="auth-message alert alert-info">
@@ -58,8 +59,7 @@
                 </span>
                 <span v-else>
                     <i class="fas fa-ban me-2"></i>
-                    Fully Booked
-                </span>
+                    {{ course.capacity <= 0 ? 'Fully Booked' : 'Cannot Book' }} </span>
             </button>
         </div>
         <div v-if="showModal" class="course-detail-container2">
@@ -111,9 +111,17 @@ export default {
         const modalMessage = ref({ title: '', text: '' });
         const localUserBookings = ref([]);
 
-        const isAuthenticated = computed(() => authState.currentUser !== null);
-        const isAdmin = computed(() => authState.currentUser?.role === 'admin');
-        const currentUserId = computed(() => authState.currentUser?.id);
+        const isAuthenticated = computed(() => {
+            return authState.currentUser !== null && localStorage.getItem('isLoggedIn') === 'true';
+        });
+        
+        const isAdmin = computed(() => {
+            return authState.currentUser?.role === 'admin' || localStorage.getItem('userRole') === 'admin';
+        });
+
+        const currentUserId = computed(() => {
+            return authState.currentUser?.id || parseInt(localStorage.getItem('userId'));
+        });
 
         const convertTo24Hour = (timeStr) => {
             if (!timeStr) return '';
@@ -181,7 +189,7 @@ export default {
                 return (
                     (currentStartTime >= bookedStartTime && currentStartTime < bookedEndTime) ||
                     (currentEndTime > bookedStartTime && currentEndTime <= bookedEndTime) ||
-                    (currentStartTime <= bookedStartTime && currentEndTime )
+                    (currentStartTime <= bookedStartTime && currentEndTime)
                 );
             });
         });
@@ -213,7 +221,7 @@ export default {
             if (conflictingCourses.length === 0) return '';
 
             const courseList = conflictingCourses
-                .map(conflictCourse => 
+                .map(conflictCourse =>
                     `${conflictCourse.title} (${conflictCourse.start_time} on ${formatDate(conflictCourse.start_date)})`
                 )
                 .join(', ');
@@ -369,7 +377,7 @@ export default {
         currentUserId() {
             return authState.currentUser?.id;
         },
-        
+
     },
     methods: {
 
