@@ -85,3 +85,45 @@ export const completedCourses = [
 ];
 
 export const createdCourses = [];
+
+const COURSES_STORAGE_KEY = 'courses_data';
+const COURSES_INITIALIZED_KEY = 'courses_initialized';
+
+export const initializeCourses = () => {
+    const isInitialized = localStorage.getItem(COURSES_INITIALIZED_KEY);
+    
+    if (!isInitialized) {
+        const initialData = {
+            availableCourses,
+            completedCourses,
+            createdCourses
+        };
+        localStorage.setItem(COURSES_STORAGE_KEY, JSON.stringify(initialData));
+        localStorage.setItem(COURSES_INITIALIZED_KEY, 'true');
+    }
+};
+
+export const loadCoursesFromStorage = () => {
+    try {
+        const storedData = localStorage.getItem(COURSES_STORAGE_KEY);
+        if (storedData) {
+            return JSON.parse(storedData);
+        }
+        return {
+            availableCourses,
+            completedCourses,
+            createdCourses
+        };
+    } catch (error) {
+        console.error('Error loading courses:', error);
+        return {
+            availableCourses,
+            completedCourses,
+            createdCourses
+        };
+    }
+};
+
+export const saveCoursesToStorage = (coursesData) => {
+    localStorage.setItem(COURSES_STORAGE_KEY, JSON.stringify(coursesData));
+};

@@ -1,3 +1,4 @@
+<!-- eslint-disable no-undef -->
 <template>
     <div class="courses-container">
         <div class="courses-header">
@@ -32,43 +33,58 @@
 import { authState } from '@/auth';
 import CourseCard from './layout/CourseCard.vue';
 import CourseCreation from './CourseCreatePage.vue';
-import { availableCourses, completedCourses, createdCourses } from '@/config/course-config.js';
+import { ref, onMounted, watch, computed } from 'vue';
+import { loadCoursesFromStorage } from '@/config/course-config';
+import router from '../router';
 
 export default {
     name: 'CoursesPage',
     components: { CourseCard, CourseCreation },
-    data() {
-        return {
-            activeTab: 'available', // Default tab
-            availableCourses,
-            completedCourses,
-            createdCourses,
+    setup() {
+        const activeTab = ref('available');
+        const coursesData = ref({
+            availableCourses: [],
+            completedCourses: [],
+            createdCourses: []
+        });
+
+        const loadCourses = () => {
+            const data = loadCoursesFromStorage();
+            coursesData.value = data;
         };
-    },
-    methods: {
-        checkAdminAuth() {
+
+        const checkAdminAuth = () => {
             if (!authState.currentUser) {
                 alert('You must be logged in to access this page.');
-                this.$router.push({ name: 'SignUp' });
+                router.push({ name: 'SignUp' });
                 return;
-            }else if(authState.currentUser.role === 'admin') {
+            } else if(authState.currentUser.role === 'admin') {
                 console.log('Admin access granted.');
-            }
-            else {
+            } else {
                 alert('You must contact the admin to access this page.');
-                this.activeTab = 'available';
-                this.$router.push({ name: 'CoursesPage' });
+                activeTab.value = 'available';
+                router.push({ name: 'CoursesPage' });
             }
-        },
-    },
-    watch: {
-        activeTab(newTab) {
-            if (newTab == 'created') {
-                this.checkAdminAuth();
-            }
-        },
-    },
+        };
 
+        onMounted(() => {
+            loadCourses();
+        });
+
+        watch(activeTab, (newTab) => {
+            if (newTab === 'created') {
+                checkAdminAuth();
+            }
+        });
+
+        return {
+            activeTab,
+            availableCourses: computed(() => coursesData.value.availableCourses),
+            completedCourses: computed(() => coursesData.value.completedCourses),
+            createdCourses: computed(() => coursesData.value.createdCourses),
+            checkAdminAuth
+        };
+    }
 };
 </script>
 

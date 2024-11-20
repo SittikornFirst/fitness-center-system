@@ -54,11 +54,11 @@
                     <label>Premium*</label>
                     <div class="radio-group">
                         <label class="radio-label">
-                            <input type="radio" name="price" value="free" v-model="formData.price" required>
+                            <input type="radio" name="price" value="Free" v-model="formData.price" required>
                             Free
                         </label>
                         <label class="radio-label">
-                            <input type="radio" name="price" value="premium" v-model="formData.price" required>
+                            <input type="radio" name="price" value="Premium" v-model="formData.price" required>
                             Premium
                         </label>
                     </div>
@@ -71,7 +71,8 @@
 
                 <div class="form-group">
                     <label for="start_date">Start Date*</label>
-                    <input type="date" id="start_date" v-model="formData.start_date" required>
+                    <input type="date" id="start_date" v-model="formData.start_date" required 
+                           :min="getCurrentDate()">
                 </div>
 
                 <div class="form-group">
@@ -82,81 +83,142 @@
 
             <div class="form-actions">
                 <button type="submit" class="submit-btn">Create Course</button>
-                <button type="button" class="cancel-btn" @click="resetForm">Cancel</button>
+                <button type="button" class="cancel-btn" @click="handleCancel">Cancel</button>
             </div>
         </form>
     </div>
 </template>
 
 <script>
-import { availableCourses } from '@/config/course-config';
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { loadCoursesFromStorage, saveCoursesToStorage } from '@/config/course-config';
 
 export default {
     name: 'CourseCreationForm',
-    data() {
-        return {
-            formData: {
-                title: '',
-                short_description: '',
-                long_description: '',
-                icon: '',
-                bgColor: '#E8F5E9', // Default color
-                difficulty: 'Beginner',
-                duration: '',
-                capacity: '',
-                price: '',
-                status: 'Enrolling',
-                instructor: '',
-                start_date: '',
-                start_time: ''
-            }
-        }
-    },
-    methods: {
-        validateForm() {
-            // Basic validation
-            if (!this.formData.title || !this.formData.short_description) {
-                alert('Please fill in all required fields');
+    setup() {
+        const router = useRouter();
+        const formData = ref({
+            title: '',
+            short_description: '',
+            long_description: '',
+            icon: '',
+            bgColor: '#E8F5E9',
+            difficulty: 'Beginner',
+            duration: '',
+            capacity: '',
+            price: 'Free',
+            status: 'Enrolling',
+            instructor: '',
+            start_date: '',
+            start_time: ''
+        });
+
+        const getCurrentDate = () => {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const validateForm = () => {
+            // Check all required fields
+            const requiredFields = [
+                'title', 'short_description', 'long_description', 'icon',
+                'bgColor', 'difficulty', 'duration', 'capacity', 'price',
+                'instructor', 'start_date', 'start_time'
+            ];
+
+            const missingFields = requiredFields.filter(field => !formData.value[field]);
+            
+            if (missingFields.length > 0) {
+                alert(`Please fill in all required fields: ${missingFields.join(', ')}`);
                 return false;
             }
+
+            // Validate numeric fields
+            if (isNaN(formData.value.duration) || formData.value.duration <= 0) {
+                alert('Duration must be a positive number');
+                return false;
+            }
+
+            if (isNaN(formData.value.capacity) || formData.value.capacity <= 0) {
+                alert('Capacity must be a positive number');
+                return false;
+            }
+
+            // Validate date
+            const selectedDate = new Date(formData.value.start_date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (selectedDate < today) {
+                alert('Start date cannot be in the past');
+                return false;
+            }
+
             return true;
-        },
-        handleSubmit() {
-            if (!this.validateForm()) return;
+        };
+
+        const handleSubmit = () => {
+            if (!validateForm()) return;
 
             try {
+                const coursesData = loadCoursesFromStorage();
+
+                const allCourses = [
+                    ...coursesData.availableCourses,
+                    ...coursesData.completedCourses,
+                    ...coursesData.createdCourses
+                ];
+                const maxId = allCourses.reduce((max, course) => Math.max(max, course.id), 0);
+                
                 const courseData = {
-                    ...this.formData,
-                    id: availableCourses.length + 1,
-                    duration: `${this.formData.duration} min`
+                    ...formData.value,
+                    id: maxId + 1,
+                    duration: `${formData.value.duration} min`,
+                    capacity: parseInt(formData.value.capacity),
+                    start_time: convertTo12Hour(formData.value.start_time)
                 };
 
-                availableCourses.push(courseData);
+                // Add to availableCourses
+                coursesData.availableCourses.push(courseData);
+
+                // Save to localStorage
+                saveCoursesToStorage(coursesData);
+
                 alert('Course created successfully!');
-                this.$router.push('/courses');
-                this.resetForm();
+                router.push('/home');
             } catch (error) {
                 console.error('Error creating course:', error);
                 alert('Failed to create course. Please try again.');
             }
-        },
-        resetForm() {
-            this.formData = {
-                title: '',
-                short_description: '',
-                long_description: '',
-                icon: '',
-                bgColor: '#E8F5E9',
-                difficulty: 'Beginner',
-                duration: '',
-                capacity: '',
-                price: '',
-                status: 'Enrolling',
-                instructor: '',
-                start_date: '',
-                start_time: ''
-            };
-        }
+        };
+
+        const convertTo12Hour = (time24) => {
+            if (!time24) return '';
+            
+            const [hours, minutes] = time24.split(':');
+            const hour = parseInt(hours);
+            const period = hour >= 12 ? 'PM' : 'AM';
+            const hour12 = hour % 12 || 12;
+            
+            return `${hour12}:${minutes} ${period}`;
+        };
+
+        const handleCancel = () => {
+            if (confirm('Are you sure you want to cancel? All entered data will be lost.')) {
+                router.push('/home');
+            }
+        };
+
+        return {
+            formData,
+            handleSubmit,
+            handleCancel,
+            getCurrentDate
+        };
     }
 }
 </script>

@@ -95,9 +95,9 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue';
-import { availableCourses, completedCourses, createdCourses } from '@/config/course-config';
+import { loadCoursesFromStorage, saveCoursesToStorage } from '@/config/course-config';
+import { loadBookingsFromStorage, saveBookingsToStorage } from '@/config/booking-config';
 import { authState } from '@/auth';
-import { userBookings } from '@/config/booking-config';
 import { useRoute, useRouter } from 'vue-router';
 
 export default {
@@ -110,11 +110,15 @@ export default {
         const modalType = ref('booking');
         const modalMessage = ref({ title: '', text: '' });
         const localUserBookings = ref([]);
-
+        const coursesData = ref({
+            availableCourses: [],
+            completedCourses: [],
+            createdCourses: []
+        });
         const isAuthenticated = computed(() => {
             return authState.currentUser !== null && localStorage.getItem('isLoggedIn') === 'true';
         });
-        
+
         const isAdmin = computed(() => {
             return authState.currentUser?.role === 'admin' || localStorage.getItem('userRole') === 'admin';
         });
@@ -163,19 +167,24 @@ export default {
         });
 
         const hasTimeConflict = computed(() => {
-            if (!isAuthenticated.value || !course.value || !localUserBookings.value) {
+            if (!isAuthenticated.value || !course.value || !localUserBookings.value || !coursesData.value) {
                 return false;
             }
 
             const currentStartTime = new Date(`${course.value.start_date}T${convertTo24Hour(course.value.start_time)}`);
             const currentEndTime = new Date(currentStartTime.getTime() + getDurationInMinutes(course.value.duration) * 60000);
 
+            // Get all courses from coursesData
+            const allCourses = [
+                ...coursesData.value.availableCourses,
+                ...coursesData.value.completedCourses,
+                ...coursesData.value.createdCourses
+            ];
+
+            // Get user's booked courses
             const userBookedCourses = localUserBookings.value
-                .filter(booking => booking.userId === currentUserId.value)
-                .map(booking => {
-                    return [...availableCourses, ...completedCourses, ...createdCourses]
-                        .find(c => c.id === booking.courseId);
-                })
+                .filter(booking => booking.userId === currentUserId.value && booking.courseId !== course.value.id) // Exclude current course
+                .map(booking => allCourses.find(c => c.id === booking.courseId))
                 .filter(Boolean);
 
             return userBookedCourses.some(bookedCourse => {
@@ -189,22 +198,29 @@ export default {
                 return (
                     (currentStartTime >= bookedStartTime && currentStartTime < bookedEndTime) ||
                     (currentEndTime > bookedStartTime && currentEndTime <= bookedEndTime) ||
-                    (currentStartTime <= bookedStartTime && currentEndTime)
+                    (currentStartTime <= bookedStartTime && currentEndTime >= bookedEndTime)
                 );
             });
         });
 
         const conflictingCoursesMessage = computed(() => {
-            if (!hasTimeConflict.value || !localUserBookings.value || !course.value) return '';
+            if (!hasTimeConflict.value || !localUserBookings.value || !course.value || !coursesData.value) {
+                return '';
+            }
+
+            const allCourses = [
+                ...coursesData.value.availableCourses,
+                ...coursesData.value.completedCourses,
+                ...coursesData.value.createdCourses
+            ];
 
             const conflictingCourses = localUserBookings.value
-                .filter(booking => booking.userId === currentUserId.value)
-                .map(booking => {
-                    return [...availableCourses, ...completedCourses, ...createdCourses]
-                        .find(c => c.id === booking.courseId);
-                })
+                .filter(booking => booking.userId === currentUserId.value && booking.courseId !== course.value.id) // Exclude current course
+                .map(booking => allCourses.find(c => c.id === booking.courseId))
                 .filter(conflictCourse => {
-                    if (!conflictCourse || conflictCourse.start_date !== course.value.start_date) return false;
+                    if (!conflictCourse || conflictCourse.start_date !== course.value.start_date) {
+                        return false;
+                    }
 
                     const courseStartTime = new Date(`${conflictCourse.start_date}T${convertTo24Hour(conflictCourse.start_time)}`);
                     const courseEndTime = new Date(courseStartTime.getTime() + getDurationInMinutes(conflictCourse.duration) * 60000);
@@ -218,7 +234,9 @@ export default {
                     );
                 });
 
-            if (conflictingCourses.length === 0) return '';
+            if (conflictingCourses.length === 0) {
+                return '';
+            }
 
             const courseList = conflictingCourses
                 .map(conflictCourse =>
@@ -239,64 +257,64 @@ export default {
         });
 
         const loadCourse = () => {
-            const courseId = parseInt(route.params.id);
-            const allCourses = [...availableCourses, ...completedCourses, ...createdCourses];
-            const foundCourse = allCourses.find(c => c.id === courseId);
+            try {
+                const courseId = parseInt(route.params.id);
+                coursesData.value = loadCoursesFromStorage();
 
-            if (!foundCourse) {
+                const allCourses = [
+                    ...coursesData.value.availableCourses,
+                    ...coursesData.value.completedCourses,
+                    ...coursesData.value.createdCourses
+                ];
+
+                const foundCourse = allCourses.find(c => c.id === courseId);
+
+                if (!foundCourse) {
+                    router.push('/not-found');
+                    return;
+                }
+
+                course.value = foundCourse;
+
+                localUserBookings.value = loadBookingsFromStorage();
+            } catch (error) {
+                console.error('Error loading course:', error);
                 router.push('/not-found');
-                return;
             }
-
-            course.value = foundCourse;
-            localUserBookings.value = userBookings.userBook || [];
-        };
-
-        const editCourse = () => {
-            if (!isAdmin.value) return;
-            router.push(`/courses/${course.value.id}/edit`);
-        };
-
-        const confirmDelete = () => {
-            if (!isAdmin.value) return;
-            modalType.value = 'delete';
-            showModal.value = true;
-            modalMessage.value = {
-                title: 'Confirm Delete',
-                text: `Are you sure you want to delete the course "${course.value.title}"? This action cannot be undone.`
-            };
         };
 
         const deleteCourse = async () => {
             if (!isAdmin.value) return;
 
             try {
-                let courseFound = false;
+                const courseId = course.value.id;
+                let updated = false;
 
-                const availableIndex = availableCourses.findIndex(c => c.id === course.value.id);
-                if (availableIndex !== -1) {
-                    availableCourses.splice(availableIndex, 1);
-                    courseFound = true;
+                if (coursesData.value.availableCourses.some(c => c.id === courseId)) {
+                    coursesData.value.availableCourses = coursesData.value.availableCourses
+                        .filter(c => c.id !== courseId);
+                    updated = true;
                 }
 
-                if (!courseFound) {
-                    const completedIndex = completedCourses.findIndex(c => c.id === course.value.id);
-                    if (completedIndex !== -1) {
-                        completedCourses.splice(completedIndex, 1);
-                        courseFound = true;
-                    }
+                if (!updated && coursesData.value.completedCourses.some(c => c.id === courseId)) {
+                    coursesData.value.completedCourses = coursesData.value.completedCourses
+                        .filter(c => c.id !== courseId);
+                    updated = true;
                 }
 
-                if (!courseFound) {
-                    const createdIndex = createdCourses.findIndex(c => c.id === course.value.id);
-                    if (createdIndex !== -1) {
-                        createdCourses.splice(createdIndex, 1);
-                    }
+                if (!updated && coursesData.value.createdCourses.some(c => c.id === courseId)) {
+                    coursesData.value.createdCourses = coursesData.value.createdCourses
+                        .filter(c => c.id !== courseId);
                 }
 
-                userBookings.userBook = userBookings.userBook.filter(
-                    booking => booking.courseId !== course.value.id
+                // Save updated courses to localStorage
+                saveCoursesToStorage(coursesData.value);
+
+                // Remove associated bookings
+                const updatedBookings = localUserBookings.value.filter(
+                    booking => booking.courseId !== courseId
                 );
+                saveBookingsToStorage(updatedBookings);
 
                 closeModal();
                 router.push('/courses');
@@ -308,11 +326,6 @@ export default {
                     text: 'Failed to delete the course. Please try again.'
                 };
             }
-        };
-
-        const closeModal = () => {
-            showModal.value = false;
-            modalType.value = 'booking';
         };
 
         const bookCourse = async () => {
@@ -327,13 +340,16 @@ export default {
                     status: 'enrolled'
                 };
 
-                userBookings.userBook.push(newBooking);
-                localUserBookings.value = [...userBookings.userBook];
+                const updatedBookings = [...localUserBookings.value, newBooking];
+                localUserBookings.value = updatedBookings;
+                saveBookingsToStorage(updatedBookings);
 
                 course.value.capacity -= 1;
                 if (course.value.capacity === 0) {
                     course.value.status = 'Full';
                 }
+
+                saveCoursesToStorage(coursesData.value);
 
                 modalType.value = 'booking';
                 showModal.value = true;
@@ -351,6 +367,26 @@ export default {
             }
         };
 
+        const closeModal = () => {
+            showModal.value = false;
+            modalType.value = 'booking';
+        };
+
+        const editCourse = () => {
+            if (!isAdmin.value) return;
+            router.push(`/courses/${course.value.id}/edit`);
+        };
+
+        const confirmDelete = () => {
+            if (!isAdmin.value) return;
+            modalType.value = 'delete';
+            showModal.value = true;
+            modalMessage.value = {
+                title: 'Confirm Delete',
+                text: `Are you sure you want to delete the course "${course.value.title}"? This action cannot be undone.`
+            };
+        };
+        
         onMounted(() => {
             loadCourse();
         });
@@ -370,7 +406,8 @@ export default {
             deleteCourse,
             closeModal,
             bookCourse,
-            conflictingCoursesMessage
+            conflictingCoursesMessage,
+            formatDate
         };
     },
     computed: {
@@ -379,33 +416,6 @@ export default {
         },
 
     },
-    methods: {
-
-        formatDate(dateStr) {
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-        },
-        convertTo24Hour(timeStr) {
-            const [time, period] = timeStr.split(' ');
-            let [hours, minutes] = time.split(':');
-            hours = parseInt(hours);
-
-            if (period === 'PM' && hours !== 12) {
-                hours += 12;
-            } else if (period === 'AM' && hours === 12) {
-                hours = 0;
-            }
-
-            return `${hours.toString().padStart(2, '0')}:${minutes}`;
-        },
-        getDurationInMinutes(duration) {
-            return parseInt(duration.split(' ')[0]);
-        },
-    }
 };
 </script>
 

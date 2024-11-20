@@ -36,3 +36,12 @@ export const userBookings = {
     }]
 
 }
+
+export const saveBookingsToStorage = (bookings) => {
+    localStorage.setItem('user_bookings', JSON.stringify(bookings));
+};
+
+export const loadBookingsFromStorage = () => {
+    const storedBookings = localStorage.getItem('user_bookings');
+    return storedBookings ? JSON.parse(storedBookings) : [];
+};

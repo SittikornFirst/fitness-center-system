@@ -21,12 +21,5 @@ export const userConfig = {
             password: 'user123',
             role: 'user',
         },
-        {
-            id: 4, 
-            username: 'First',
-            email: 'sittikorn@gmail.com',
-            password: '123',
-            role: 'user',
-        },
     ],
 };

@@ -30,3 +30,12 @@ export const promotions = [
         image: null
     }
 ];
+
+export const initializePromotions = () => {
+    const isInitialized = localStorage.getItem('promotions_initialized');
+
+    if (!isInitialized) {
+        localStorage.setItem('promotions_data', JSON.stringify(promotions));
+        localStorage.setItem('promotions_initialized', 'true');
+    }
+};

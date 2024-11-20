@@ -102,8 +102,7 @@
 
 <script>
 import { ref, onMounted } from 'vue';
-import { availableCourses, completedCourses, createdCourses } from '@/config/course-config';
-
+import { loadCoursesFromStorage, saveCoursesToStorage } from '@/config/course-config';
 import { useRoute, useRouter } from 'vue-router';
 
 export default {
@@ -112,6 +111,7 @@ export default {
         const route = useRoute();
         const router = useRouter();
         const formData = ref(null);
+        const coursesData = ref(null);
 
         const convertTo24Hour = (timeStr) => {
             const [time, period] = timeStr.split(' ');
@@ -128,7 +128,14 @@ export default {
 
         const loadCourseData = () => {
             const courseId = parseInt(route.params.id);
-            const allCourses = [...availableCourses, ...completedCourses, ...createdCourses];
+            coursesData.value = loadCoursesFromStorage();
+            
+            const allCourses = [
+                ...coursesData.value.availableCourses,
+                ...coursesData.value.completedCourses,
+                ...coursesData.value.createdCourses
+            ];
+            
             const course = allCourses.find(c => c.id === courseId);
 
             if (!course) {
@@ -150,17 +157,22 @@ export default {
         const handleSubmit = () => {
             try {
                 const courseId = parseInt(route.params.id);
-                const allCourses = [availableCourses, completedCourses, createdCourses];
+                const courseArrays = [
+                    { array: coursesData.value.availableCourses, key: 'availableCourses' },
+                    { array: coursesData.value.completedCourses, key: 'completedCourses' },
+                    { array: coursesData.value.createdCourses, key: 'createdCourses' }
+                ];
 
-                for (let courseArray of allCourses) {
-                    const index = courseArray.findIndex(c => c.id === courseId);
+                // eslint-disable-next-line no-unused-vars
+                for (let { array, key } of courseArrays) {
+                    const index = array.findIndex(c => c.id === courseId);
                     if (index !== -1) {
-                        // Format duration back to "X minutes"
                         const updatedData = {
                             ...formData.value,
                             duration: `${formData.value.duration} minutes`
                         };
-                        courseArray[index] = updatedData;
+                        array[index] = updatedData;
+                        saveCoursesToStorage(coursesData.value);
                         break;
                     }
                 }

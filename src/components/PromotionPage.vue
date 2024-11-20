@@ -18,9 +18,6 @@
             <button @click="showAddPromotionForm = true" class="admin-button ">
                 Add New Promotion
             </button>
-            <button @click="resetPromotions" class="admin-button reset-button">
-                Reset to Default
-            </button>
         </div>
 
         <div v-if="filteredPromotions.length > 0" class="promotions-grid">
@@ -95,9 +92,11 @@
 <script>
 import { ref, computed, onMounted } from 'vue';
 import { hasRole } from '@/auth';
-import { promotions } from '@/config/promotion-config';
+import { promotions,initializePromotions  } from '@/config/promotion-config';
 
 const PROMOTIONS_STORAGE_KEY = 'promotions_data';
+
+initializePromotions();
 
 export default {
     name: "PromotionPage",
@@ -125,7 +124,7 @@ export default {
                 if (storedPromotions) {
                     promotionsData.value = JSON.parse(storedPromotions);
                 } else {
-                    promotionsData.value = promotions; // Load from config if no stored data
+                    promotionsData.value = promotions; 
                     localStorage.setItem(PROMOTIONS_STORAGE_KEY, JSON.stringify(promotions));
                 }
             } catch (error) {
@@ -133,18 +132,8 @@ export default {
                 promotionsData.value = promotions;
             }
         };
-        const resetPromotions = () => {
-            if (confirm('Are you sure you want to reset all promotions to default? This cannot be undone.')) {
-                try {
-                    // Reset to default promotions from config
-                    promotionsData.value = promotions;
-                    // Update localStorage
-                    localStorage.setItem(PROMOTIONS_STORAGE_KEY, JSON.stringify(promotions));
-                } catch (error) {
-                    console.error('Error resetting promotions:', error);
-                }
-            }
-        };
+
+
         // Filter promotions based on search and filter criteria
         const filteredPromotions = computed(() => {
             let filtered = [...promotionsData.value];
@@ -273,6 +262,8 @@ export default {
             loadPromotions();
         });
 
+
+
         return {
             searchQuery,
             filterType,
@@ -281,11 +272,11 @@ export default {
             editingPromotion,
             isAdmin,
             filteredPromotions,
-            resetPromotions,
             ...methods
         };
-    }
+    },
 };
+
 </script>
 
 <style scoped>
@@ -401,7 +392,7 @@ export default {
     margin-right: 10px;
 }
 
-.reset-button{
+.reset-button {
     background-color: #ff3939;
 }
 
